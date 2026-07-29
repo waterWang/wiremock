@@ -549,6 +549,9 @@ class FileUpload {
     /** Is this a multipart/related Request */
     private final boolean multipartRelated;
 
+    /** Is this a multipart/mixed Request */
+    private final boolean multipartMixed;
+
     /**
      * Creates a new instance.
      *
@@ -574,6 +577,7 @@ class FileUpload {
       }
 
       multipartRelated = contentType.toLowerCase(Locale.ENGLISH).startsWith(MULTIPART_RELATED);
+      multipartMixed = contentType.toLowerCase(Locale.ENGLISH).startsWith(FileUploadBase.MULTIPART_MIXED);
 
       @SuppressWarnings("deprecation") // still has to be backward compatible
       final int contentLengthInt = ctx.getContentLength();
@@ -708,6 +712,21 @@ class FileUpload {
                     fieldName,
                     headers.getHeader(FileUploadBase.CONTENT_TYPE),
                     fileName == null,
+                    getContentLength(headers));
+            currentItem.setHeaders(headers);
+            itemValid = true;
+            return true;
+          } else if (multipartMixed) {
+            // Handle multipart/mixed parts without Content-Disposition
+            // (e.g., OData $batch where parts have Content-Type: application/http
+            //  but no Content-Disposition header)
+            currentFieldName = "";
+            currentItem =
+                new FileItemStreamImpl(
+                    null,
+                    null,
+                    headers.getHeader(FileUploadBase.CONTENT_TYPE),
+                    false,
                     getContentLength(headers));
             currentItem.setHeaders(headers);
             itemValid = true;
